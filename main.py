@@ -5,7 +5,7 @@ from selenium.webdriver.support.select import Select
 import time
 import sys
 import os
-import loginui
+import login_ui
 import read_docx
 from PyQt5 import QtWidgets
 from PyQt5.QtWidgets import QApplication, QMainWindow, QMessageBox
@@ -113,7 +113,7 @@ def main_func(username, passwd, filepath):
 
 if __name__ == '__main__':
     app = QtWidgets.QApplication(sys.argv)
-    ui = loginui.Ui_Dialog()
+    ui = login_ui.Ui_Dialog()
     MainWindow = QtWidgets.QMainWindow()
     ui.setupUi(MainWindow)
     MainWindow.show()
