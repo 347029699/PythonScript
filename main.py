@@ -5,6 +5,7 @@ from selenium.webdriver.support.select import Select
 import time
 import sys
 import os
+from concurrent.futures import ThreadPoolExecutor
 import login_ui
 import read_docx
 from PyQt5 import QtWidgets
@@ -36,6 +37,7 @@ page_list = {
 }
 
 path = ""
+pool = ThreadPoolExecutor(max_workers=2)  # 创建线程池，线程数2
 
 
 def input_filepath(self):
@@ -56,24 +58,27 @@ def start_func(self):
     username = ui.userName.text()
     passwd = ui.passwd.text()
     if len(username) == 0 or len(passwd) == 0:
-        msg_box = QMessageBox(QMessageBox.Critical, '错误', '用户名或密码不能为空！')
-        msg_box.exec_()
+        QMessageBox(QMessageBox.Critical, '错误', '用户名或密码不能为空！').exec_()
     elif len(path) == 0:
-        msg_box = QMessageBox(QMessageBox.Critical, '错误', '请选择文件！')
-        msg_box.exec_()
+        QMessageBox(QMessageBox.Critical, '错误', '请选择文件！').exec_()
     else:
-        main_func(username, passwd, path)
+        work = pool.submit(main_func, username, passwd, path)
+        res = work.result()
+        if res['state'] is False:
+            QMessageBox(QMessageBox.Critical, '错误', res['msg']).exec_()
 
 
 def main_func(username, passwd, filepath):
     data = read_docx.read(filepath)
-    if not data:
-        msg_box = QMessageBox(QMessageBox.Critical, '错误', '读取该文件数据为空或该路径不存在文件！')
-        msg_box.exec_()
+    if data is None:
+        return {'state': False, 'msg': "读取该文件数据为空或该路径不存在文件！"}
     else:
         print(data)
         driver = Service("E:/pythonProject/venv/Scripts/chromedriver.exe")
-        browser = webdriver.Chrome(service=driver)
+        options = webdriver.ChromeOptions()
+        # options.add_experimental_option('detach', True)  # 不自动关闭浏览器
+        options.add_argument('--start-maximized')  # 浏览器窗口最大化
+        browser = webdriver.Chrome(service=driver, options=options)
         browser.get('http://www.nbcqjy.org/utr/sendPage/flow/my-task-lists')
         browser.find_element(By.ID, "userEname").clear()
         browser.find_element(By.ID, "userEname").send_keys(username)
@@ -83,9 +88,7 @@ def main_func(username, passwd, filepath):
         time.sleep(1)
         error_message = browser.find_element(By.ID, "error-message").get_attribute("innerText")
         if len(error_message) > 0:
-            browser.quit()
-            msg_box = QMessageBox(QMessageBox.Critical, '错误', '用户名或密码错误，无法登陆！')
-            msg_box.exec_()
+            return {'state': False, 'msg': "用户名或密码错误，无法登陆！"}
         else:
             browser.get(page_list['资产出租单租赁项目录入'])  # 选择栏目
             browser.find_element(By.NAME, "proName").clear()
@@ -123,3 +126,4 @@ if __name__ == '__main__':
     ui.startButton.clicked.connect(start_func)  # 开始按钮绑定
 
     sys.exit(app.exec())
+    pool.shutdown()
