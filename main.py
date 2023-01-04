@@ -57,23 +57,35 @@ def clear_filepath(self):
 def start_func(self):
     username = ui.userName.text()
     passwd = ui.passwd.text()
+    enter_type = 0
+    if ui.radioButton.isChecked():
+        enter_type = 1
+    elif ui.radioButton2.isChecked():
+        enter_type = 2
+    elif ui.radioButton3.isChecked():
+        enter_type = 3
+    elif ui.radioButton4.isChecked():
+        enter_type = 4
     if len(username) == 0 or len(passwd) == 0:
         QMessageBox(QMessageBox.Critical, '错误', '用户名或密码不能为空！').exec_()
     elif len(path) == 0:
         QMessageBox(QMessageBox.Critical, '错误', '请选择文件！').exec_()
+    elif enter_type == 0:
+        QMessageBox(QMessageBox.Critical, '错误', "请选择录入类型！").exec_()
     else:
-        work = pool.submit(main_func, username, passwd, path)
+        work = pool.submit(main_func, username, passwd, path, enter_type)
         res = work.result()
         if res['state'] is False:
             QMessageBox(QMessageBox.Critical, '错误', res['msg']).exec_()
 
 
-def main_func(username, passwd, filepath):
+def main_func(username, passwd, filepath, enter_type):
     data = read_docx.read(filepath)
     if data is None:
-        return {'state': False, 'msg': "读取该文件数据为空或该路径不存在文件！"}
+        return {'state': False, 'msg': "读取文件数据为空！"}
+    elif isinstance(data, str):
+        return {'state': False, 'msg': "读取文件数据有误或该路径不存在文件！" + data}
     else:
-        print(data)
         driver = Service("E:/pythonProject/venv/Scripts/chromedriver.exe")
         options = webdriver.ChromeOptions()
         # options.add_experimental_option('detach', True)  # 不自动关闭浏览器
@@ -90,7 +102,17 @@ def main_func(username, passwd, filepath):
         if len(error_message) > 0:
             return {'state': False, 'msg': "用户名或密码错误，无法登陆！"}
         else:
-            browser.get(page_list['资产出租单租赁项目录入'])  # 选择栏目
+            # 选择栏目
+            if enter_type == 1:
+                browser.get(page_list['资产转让单资产项目录入'])
+            elif enter_type == 2:
+                browser.get(page_list['资产转让资产包录入'])
+            elif enter_type == 3:
+                browser.get(page_list['资产出租单租赁项目录入'])
+            elif enter_type == 4:
+                browser.get(page_list['资产出租租赁包录入'])
+            else:
+                QMessageBox(QMessageBox.Critical, '错误', "system error.").exec_()
             browser.find_element(By.NAME, "proName").clear()
             browser.find_element(By.NAME, "proName").send_keys("XXX房屋出租项目")  # 项目名称
             browser.find_element(By.NAME, "proPrice").clear()
